@@ -1,0 +1,639 @@
+<title>Zernio Connect</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Bố cục: thanh Kho API ở đầu dùng chung, bên dưới ba tab công việc. Màu xám xanh lệch về teal, chữ mono cho ID và link. */
+:root {
+  --bg: #f3f6f8;
+  --surface: #ffffff;
+  --surface2: #eaf0f3;
+  --ink: #12212b;
+  --muted: #566874;
+  --line: #d8e0e6;
+  --accent: #0a7c76;
+  --accent-ink: #ffffff;
+  --accent-soft: #d9efed;
+  --ok: #177a43;
+  --ok-soft: #dcf1e4;
+  --warn: #9a5b00;
+  --warn-soft: #fbefd8;
+  --err: #b3261e;
+  --err-soft: #fbe5e3;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e171d; --surface: #15212a; --surface2: #1c2b36; --ink: #e5edf2; --muted: #8fa1ad; --line: #253643;
+    --accent: #3ec2b9; --accent-ink: #06211f; --accent-soft: #123532;
+    --ok: #5ccf8d; --ok-soft: #12301f; --warn: #e5b04f; --warn-soft: #33270f; --err: #f08278; --err-soft: #3a1a18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e171d; --surface: #15212a; --surface2: #1c2b36; --ink: #e5edf2; --muted: #8fa1ad; --line: #253643;
+  --accent: #3ec2b9; --accent-ink: #06211f; --accent-soft: #123532;
+  --ok: #5ccf8d; --ok-soft: #12301f; --warn: #e5b04f; --warn-soft: #33270f; --err: #f08278; --err-soft: #3a1a18;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body);
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+h1 { font: 600 24px/1.2 var(--font-head); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font: 600 15px/1.3 var(--font-head); margin: 0; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.end { justify-content: flex-end; }
+.grow { flex: 1 1 200px; min-width: 0; }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.top p { max-width: 62ch; color: var(--muted); margin-top: 4px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+textarea, input[type="text"], input[type="date"], select {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; width: 100%;
+}
+textarea { font-family: var(--font-mono); font-size: 12px; resize: vertical; min-height: 78px; }
+input[type="date"], select { width: auto; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn {
+  font: 500 13px/1 var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 6px; padding: 9px 12px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--surface2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+.btn.sm { padding: 6px 9px; font-size: 12px; }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.badge { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--surface2); color: var(--muted); white-space: nowrap; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.err { background: var(--err-soft); color: var(--err); }
+.alert { padding: 9px 12px; border-radius: 6px; font-size: 13px; }
+.alert.err { background: var(--err-soft); color: var(--err); }
+.alert.warn { background: var(--warn-soft); color: var(--warn); }
+
+.keys { display: flex; flex-direction: column; }
+.key-row { display: grid; grid-template-columns: minmax(120px, 1.4fr) auto minmax(0, 1.6fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.key-row input { padding: 6px 8px; }
+@media (max-width: 640px) { .key-row { grid-template-columns: 1fr auto; } .key-row .badge-cell { grid-column: 1 / -1; } }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab { font: 500 14px var(--font-body); color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--ink); }
+.pane { display: flex; flex-direction: column; gap: 14px; }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 26px 16px; text-align: center; color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.card-id { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; min-width: 0; }
+.card-title { font: 600 15px var(--font-head); overflow-wrap: anywhere; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip { font: 12px var(--font-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 99px; padding: 3px 10px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.slot { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.slot label.lead { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.checks { display: flex; gap: 6px 12px; flex-wrap: wrap; }
+.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.hint { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.hint.ok { color: var(--ok); } .hint.warn { color: var(--warn); }
+
+.res-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+.chan { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.chan-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.link-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.link-url { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 520px) { .link-row { grid-template-columns: 1fr auto; } .link-row .link-url { grid-column: 1 / -1; order: 3; } }
+
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; background: var(--surface2); position: sticky; top: 0; }
+th button { all: unset; cursor: pointer; text-transform: inherit; letter-spacing: inherit; }
+th button:hover { color: var(--ink); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.wrapcell { white-space: normal; min-width: 220px; max-width: 360px; }
+tr.dim td { color: var(--muted); }
+.idc { all: unset; cursor: pointer; font: 12px var(--font-mono); padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; display: inline-flex; gap: 6px; align-items: center; }
+.idc:hover { background: var(--accent-soft); border-color: var(--accent); }
+.idc:focus-visible { outline: 2px solid var(--accent); }
+.idc.done { background: var(--ok-soft); color: var(--ok); }
+.ico { width: 13px; height: 13px; flex: none; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; padding: 4px 2px; }
+.stat b { display: block; font: 600 20px var(--font-head); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filters label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 20; max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Zernio Connect</h1>
+      <p>Dán một hoặc nhiều API key Zernio để tạo link kết nối tài khoản mạng xã hội, quét profile ID và account ID, và quét thông số video của từng kênh.</p>
+    </div>
+  </div>
+
+  <div id="netwarn" class="alert warn" hidden></div>
+
+  <section class="panel" aria-labelledby="kho-title">
+    <div class="panel-head">
+      <h2 id="kho-title">Kho API key</h2>
+      <span class="muted" style="font-size:12.5px">Key chỉ nằm trong trang này. Tải lại trang là mất, không được lưu ở đâu.</span>
+    </div>
+    <label for="keys-input" class="muted" style="font-size:12.5px">Mỗi dòng một key. Có thể ghi kèm tên hoặc email ở đầu dòng, ví dụ <span class="mono">ten@gmail.com sk_abc123…</span></label>
+    <textarea id="keys-input" rows="4" spellcheck="false" autocomplete="off" placeholder="ten@gmail.com sk_xxxxxxxx&#10;sk_yyyyyyyy"></textarea>
+    <div class="row"><button id="add-keys" class="btn primary" type="button">Thêm key</button><span id="key-count" class="muted"></span></div>
+    <div id="key-list" class="keys"></div>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Chức năng">
+    <button class="tab" role="tab" id="t-tao-link" aria-controls="p-tao-link" data-tab="tao-link">Tạo link kết nối</button>
+    <button class="tab" role="tab" id="t-quet-id" aria-controls="p-quet-id" data-tab="quet-id">Quét ID</button>
+    <button class="tab" role="tab" id="t-thong-so" aria-controls="p-thong-so" data-tab="thong-so">Thông số video</button>
+  </div>
+
+  <div class="pane" id="p-tao-link" role="tabpanel" aria-labelledby="t-tao-link">
+    <div class="row">
+      <button id="make-all" class="btn primary" type="button">Tạo link cho tất cả key</button>
+      <button id="copy-all-links" class="btn" type="button">Copy tất cả link</button>
+      <span class="muted" style="font-size:12.5px">Mỗi key nối được tối đa 2 kênh. Kênh chưa có profile sẽ được tạo mới trên Zernio.</span>
+    </div>
+    <div id="cards" class="pane"></div>
+  </div>
+
+  <div class="pane" id="p-quet-id" role="tabpanel" aria-labelledby="t-quet-id" hidden>
+    <div class="filters">
+      <button id="scan-ids" class="btn primary" type="button">Quét tất cả key</button>
+      <button id="copy-ids" class="btn" type="button">Copy bảng</button>
+      <input id="id-filter" type="text" placeholder="Lọc theo kênh, nền tảng, tên…" style="max-width:260px" aria-label="Lọc bảng ID">
+      <label for="id-empty"><input id="id-empty" type="checkbox"> Hiện profile chưa nối tài khoản</label>
+    </div>
+    <div id="ids-out" class="pane"></div>
+  </div>
+
+  <div class="pane" id="p-thong-so" role="tabpanel" aria-labelledby="t-thong-so" hidden>
+    <div class="filters">
+      <label for="st-from">Từ</label><input id="st-from" type="date">
+      <label for="st-to">Đến</label><input id="st-to" type="date">
+      <button id="scan-stats" class="btn primary" type="button">Quét thông số</button>
+      <button id="copy-stats" class="btn" type="button">Copy bảng</button>
+    </div>
+    <div id="stats-out" class="pane"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var BASE = "https://zernio.com/api/v1";
+  var PLATFORMS = [
+    { id: "tiktok", name: "TikTok", on: true }, { id: "facebook", name: "Facebook", on: true },
+    { id: "youtube", name: "YouTube", on: true }, { id: "instagram", name: "Instagram", on: true },
+    { id: "threads", name: "Threads" }, { id: "twitter", name: "X" },
+    { id: "linkedin", name: "LinkedIn" }, { id: "pinterest", name: "Pinterest" }
+  ];
+  var PNAME = {}; PLATFORMS.forEach(function (p) { PNAME[p.id] = p.name; });
+  var pname = function (id) { return PNAME[id] || id || ""; };
+  var nf = new Intl.NumberFormat("vi-VN");
+  var keys = [], uid = 0;
+  var ids = { rows: [], errors: [], busy: false, done: false };
+  var stats = { rows: [], errors: [], notes: [], busy: false, done: false, sort: "views", dir: -1, platform: "", channel: "" };
+
+  function $(s) { return document.querySelector(s); }
+  function h(tag, props) {
+    var e = document.createElement(tag);
+    var p = props || {};
+    Object.keys(p).forEach(function (k) {
+      var v = p[k];
+      if (v == null || v === false) return;
+      if (k === "class") e.className = v;
+      else if (k === "text") e.textContent = v;
+      else if (k === "value") e.value = v;
+      else if (k === "checked") e.checked = !!v;
+      else if (k.slice(0, 2) === "on") e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : v);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      for (var j = 0; j < kids.length; j++) {
+        var c = kids[j];
+        if (c == null || c === false) continue;
+        e.append(c.nodeType ? c : document.createTextNode(String(c)));
+      }
+    }
+    return e;
+  }
+  var COPY_SVG = '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9A1.5 1.5 0 0 0 3.5 10.5h2"/></svg>';
+  function icon() { var s = document.createElement("span"); s.innerHTML = COPY_SVG; return s.firstChild; }
+  var toastT;
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove("on"); }, 1800); }
+  function copy(text, label) {
+    var done = function () { toast("Đã copy" + (label ? " " + label : "")); };
+    var fallback = function () {
+      var ta = h("textarea", { style: "position:fixed;opacity:0;top:0;left:0" }); ta.value = text; document.body.append(ta); ta.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) {} ta.remove();
+      if (ok) done(); else toast("Trình duyệt không cho copy, hãy bôi đen và copy thủ công");
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+  }
+  // Ô ID: bấm vào là copy.
+  function idCell(value, label) {
+    if (!value) return h("span", { class: "muted", text: "—" });
+    var b = h("button", { class: "idc", type: "button", title: "Bấm để copy", "aria-label": "Copy " + (label || "ID") + " " + value });
+    b.append(value, icon());
+    b.addEventListener("click", function () { copy(value, label); b.classList.add("done"); setTimeout(function () { b.classList.remove("done"); }, 900); });
+    return b;
+  }
+  function copyBtn(text, getter, cls) {
+    var b = h("button", { class: "btn " + (cls || "sm"), type: "button" }); b.append(icon(), text);
+    b.addEventListener("click", function () { var v = getter(); if (v) copy(v); else toast("Chưa có gì để copy"); });
+    return b;
+  }
+  var mask = function (k) { return k.slice(0, 7) + "…" + k.slice(-4); };
+  var norm = function (s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); };
+  var httpsUrl = function (u) { return typeof u === "string" && /^https:\/\//.test(u) ? u : null; };
+  var fmtTime = function (d) { return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }); };
+  var fmtDate = function (s) { if (!s) return ""; var d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); };
+
+  // ---------- Gọi Zernio ----------
+  function zf(k, path, init) {
+    init = init || {};
+    var attempt = function (n) {
+      return fetch(BASE + path, Object.assign({}, init, { headers: Object.assign({ Authorization: "Bearer " + k.key, "Content-Type": "application/json" }, init.headers || {}) }))
+        .catch(function () { throw new Error("Không gọi được Zernio. Mạng lỗi hoặc trang này bị chặn gọi ra ngoài."); })
+        .then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            if (res.ok) return data;
+            if (res.status === 429 && n < 1) {
+              var wait = Math.min(Number(res.headers.get("retry-after")) || 5, 15) * 1000;
+              return new Promise(function (r) { setTimeout(r, wait); }).then(function () { return attempt(n + 1); });
+            }
+            var msg = data.error || data.message || ("Zernio trả " + res.status);
+            if (res.status === 401) msg = "Key sai hoặc đã bị thu hồi";
+            throw new Error(msg);
+          });
+        });
+    };
+    return attempt(0);
+  }
+  fetch(BASE + "/profiles").catch(function () {
+    var w = $("#netwarn");
+    w.textContent = "Khung xem Artifact đang chặn gọi tới zernio.com nên các nút tạo link và quét sẽ không chạy ở đây. Hãy mở file docs\\cong-cu\\zernio-connect.html trong thư mục dự án bằng Chrome (bấm đúp vào file), bản đó chạy đầy đủ.";
+    w.hidden = false;
+  });
+
+  // ---------- Kho key ----------
+  function parseKeys(text) {
+    var out = [], seen = {};
+    text.split(/\r?\n/).forEach(function (raw) {
+      var m = raw.match(/sk_[A-Za-z0-9]+/); if (!m || seen[m[0]]) return;
+      seen[m[0]] = 1;
+      var label = raw.replace(m[0], "").replace(/[\[\]=:|,\t]+/g, " ").replace(/\s+/g, " ").trim();
+      out.push({ key: m[0], label: label || mask(m[0]) });
+    });
+    return out;
+  }
+  function addKeys() {
+    var ta = $("#keys-input"), found = parseKeys(ta.value), added = 0;
+    if (!found.length) { toast("Không thấy key nào dạng sk_…"); return; }
+    found.forEach(function (f) {
+      if (keys.some(function (k) { return k.key === f.key; })) return;
+      var slots = [0, 1].map(function () { var s = new Set(); PLATFORMS.forEach(function (p) { if (p.on) s.add(p.id); }); return { name: "", platforms: s }; });
+      var k = { id: ++uid, key: f.key, label: f.label, profiles: null, loading: false, err: "", slots: slots, busy: false, result: null, error: "", ui: null };
+      keys.push(k); buildCard(k); added++;
+      loadProfiles(k);
+    });
+    ta.value = "";
+    toast(added ? "Đã thêm " + added + " key" : "Các key này đã có trong kho");
+    renderKeyList(); renderIds(); renderStats();
+  }
+  function renderKeyList() {
+    var box = $("#key-list"); box.replaceChildren();
+    $("#key-count").textContent = keys.length ? keys.length + " key trong kho" : "Chưa có key nào";
+    keys.forEach(function (k) {
+      var inp = h("input", { type: "text", value: k.label, "aria-label": "Tên key", spellcheck: "false", oninput: function () { k.label = inp.value || mask(k.key); if (k.ui) k.ui.title.textContent = k.label; } });
+      var badge = h("span", { class: "badge" });
+      k.keyBadge = badge; keyBadgeUpdate(k);
+      box.append(h("div", { class: "key-row" }, inp, h("code", { class: "mono muted", text: mask(k.key) }), h("div", { class: "badge-cell" }, badge),
+        h("button", { class: "btn sm", type: "button", text: "Xoá", onclick: function () { keys = keys.filter(function (x) { return x !== k; }); if (k.ui) k.ui.root.remove(); renderKeyList(); renderCardsEmpty(); renderIds(); renderStats(); } })));
+    });
+    renderCardsEmpty();
+  }
+  function keyBadgeUpdate(k) {
+    var b = k.keyBadge; if (!b) return;
+    if (k.loading) { b.className = "badge"; b.textContent = "Đang tải profile…"; }
+    else if (k.err) { b.className = "badge err"; b.textContent = k.err; }
+    else if (k.profiles) { b.className = "badge ok"; b.textContent = k.profiles.length + " profile"; }
+    else { b.className = "badge"; b.textContent = "Chưa tải"; }
+  }
+  function loadProfiles(k) {
+    k.loading = true; k.err = ""; refreshKey(k);
+    return zf(k, "/profiles").then(function (r) { k.profiles = r.profiles || []; })
+      .catch(function (e) { k.err = e.message; k.profiles = null; })
+      .then(function () { k.loading = false; refreshKey(k); });
+  }
+  function refreshKey(k) { keyBadgeUpdate(k); if (k.ui) k.ui.update(); }
+
+  // ---------- Tab 1: tạo link ----------
+  function slotView(k, s, i) {
+    var input = h("input", { id: "n-" + k.id + "-" + i, type: "text", placeholder: "Tên kênh, ví dụ The Cinema Rules", autocomplete: "off", spellcheck: "false", value: s.name });
+    input.setAttribute("list", "dl-" + k.id);
+    var hint = h("div", { class: "hint" });
+    var update = function () {
+      var n = norm(s.name);
+      if (!n) { hint.className = "hint"; hint.textContent = "Bỏ trống thì không tạo link cho kênh này."; return; }
+      var p = (k.profiles || []).filter(function (x) { return norm(x.name) === n; })[0];
+      if (p) { hint.className = "hint ok"; hint.textContent = "Dùng profile có sẵn " + p._id; }
+      else if (k.profiles) { hint.className = "hint warn"; hint.textContent = "Chưa có profile này. Sẽ tạo mới trên Zernio khi bấm Tạo link."; }
+      else { hint.className = "hint"; hint.textContent = "Chưa tải được danh sách profile của key này."; }
+    };
+    input.addEventListener("input", function () { s.name = input.value; update(); });
+    var checks = h("div", { class: "checks" }, PLATFORMS.map(function (p) {
+      var cb = h("input", { id: "c-" + k.id + "-" + i + "-" + p.id, type: "checkbox", checked: s.platforms.has(p.id) });
+      cb.addEventListener("change", function () { if (cb.checked) s.platforms.add(p.id); else s.platforms.delete(p.id); });
+      return h("label", { class: "chk", for: cb.id }, cb, p.name);
+    }));
+    var root = h("div", { class: "slot" }, h("label", { class: "lead", for: input.id, text: "Kênh " + (i + 1) }), input, hint, checks);
+    return { root: root, input: input, update: update };
+  }
+  function buildCard(k) {
+    var title = h("span", { class: "card-title", text: k.label });
+    var status = h("span", { class: "badge" });
+    var datalist = h("datalist", { id: "dl-" + k.id });
+    var chips = h("div", { class: "chips" });
+    var slots = k.slots.map(function (s, i) { return slotView(k, s, i); });
+    var go = h("button", { class: "btn primary", type: "button", onclick: function () { makeLinks(k); } });
+    var out = h("div", {});
+    var reload = h("button", { class: "btn sm", type: "button", text: "Tải lại profile", onclick: function () { loadProfiles(k); } });
+    var root = h("section", { class: "card" },
+      h("div", { class: "card-head" }, h("div", { class: "card-id" }, title, h("code", { class: "mono muted", text: mask(k.key) })), h("div", { class: "row" }, status, reload)),
+      chips, datalist, h("div", { class: "slots" }, slots.map(function (x) { return x.root; })), h("div", { class: "row end" }, go), out);
+    k.ui = {
+      root: root, title: title, out: out,
+      update: function () {
+        status.className = "badge" + (k.err ? " err" : k.profiles ? " ok" : "");
+        status.textContent = k.loading ? "Đang tải profile…" : k.err ? k.err : k.profiles ? k.profiles.length + " profile có sẵn" : "Chưa tải";
+        datalist.replaceChildren(); chips.replaceChildren();
+        if (k.profiles && k.profiles.length) {
+          chips.append(h("span", { class: "muted", style: "font-size:12px", text: "Profile có sẵn, bấm để điền:" }));
+          k.profiles.forEach(function (p) {
+            datalist.append(h("option", { value: p.name }));
+            chips.append(h("button", { class: "chip", type: "button", text: p.name + " · " + (p.accountCount || 0) + " tk", onclick: function () {
+              var i = k.slots[0].name.trim() ? (k.slots[1].name.trim() ? 1 : 1) : 0;
+              k.slots[i].name = p.name; slots[i].input.value = p.name; slots[i].update();
+            } }));
+          });
+        }
+        slots.forEach(function (x) { x.update(); });
+        go.disabled = k.busy || k.loading; go.textContent = k.busy ? "Đang tạo link…" : "Tạo link";
+      }
+    };
+    k.ui.update(); renderResult(k);
+    $("#cards").append(root);
+  }
+  function renderCardsEmpty() {
+    var box = $("#cards"), old = box.querySelector(".empty");
+    if (!keys.length && !old) box.prepend(h("div", { class: "empty", text: "Chưa có key. Dán API key vào Kho API ở trên rồi bấm Thêm key." }));
+    if (keys.length && old) old.remove();
+  }
+  function makeLinks(k) {
+    var todo = k.slots.filter(function (s) { return s.name.trim() && s.platforms.size; });
+    if (!todo.length) { toast("Nhập tên kênh và chọn ít nhất một nền tảng"); return Promise.resolve(); }
+    k.busy = true; k.error = ""; refreshKey(k);
+    var ensure = k.profiles ? Promise.resolve() : loadProfiles(k);
+    var channels = [];
+    return ensure.then(function () {
+      if (!k.profiles) throw new Error(k.err || "Không tải được profile");
+      return todo.reduce(function (chain, s) {
+        return chain.then(function () {
+          var name = s.name.trim(), ch = { name: name, profileId: "", created: false, links: [], error: "" };
+          channels.push(ch);
+          var find = function () { return k.profiles.filter(function (x) { return norm(x.name) === norm(name); })[0]; };
+          var getProfile = find() ? Promise.resolve(find()) : zf(k, "/profiles", { method: "POST", body: JSON.stringify({ name: name }) }).then(function (r) { k.profiles.push(r.profile); ch.created = true; return r.profile; });
+          return getProfile.then(function (p) {
+            ch.profileId = p._id; ch.name = p.name;
+            return PLATFORMS.filter(function (x) { return s.platforms.has(x.id); }).reduce(function (c2, pl) {
+              return c2.then(function () {
+                return zf(k, "/connect/" + pl.id + "?profileId=" + encodeURIComponent(p._id))
+                  .then(function (r) { ch.links.push({ platform: pl.id, url: r.authUrl || "" }); })
+                  .catch(function (e) { ch.links.push({ platform: pl.id, error: e.message }); });
+              });
+            }, Promise.resolve());
+          }).catch(function (e) { ch.error = e.message; });
+        });
+      }, Promise.resolve());
+    }).catch(function (e) { k.error = e.message; })
+      .then(function () { k.result = { at: new Date(), channels: channels }; k.busy = false; refreshKey(k); renderResult(k); renderKeyList(); });
+  }
+  function linkLines(k) {
+    if (!k.result) return [];
+    var lines = [];
+    k.result.channels.forEach(function (c) { c.links.forEach(function (l) { if (l.url) lines.push([c.name, pname(l.platform), k.label, l.url].join(" | ")); }); });
+    return lines;
+  }
+  function renderResult(k) {
+    var out = k.ui.out; out.replaceChildren();
+    if (k.error) out.append(h("div", { class: "alert err", text: k.error }));
+    if (!k.result) return;
+    var r = k.result;
+    if (!r.channels.length) return;
+    out.append(h("div", { class: "res-head" },
+      h("span", { class: "muted", text: "Tạo lúc " + fmtTime(r.at) + ". Link hết hạn sau khoảng 1 giờ, quá hạn thì tạo lại." }),
+      copyBtn("Copy tất cả link của key", function () { return linkLines(k).join("\n"); })));
+    r.channels.forEach(function (c) {
+      var box = h("div", { class: "chan" }, h("div", { class: "chan-title" }, c.name,
+        c.profileId && h("span", { class: "badge " + (c.created ? "warn" : "ok"), text: c.created ? "Mới tạo" : "Có sẵn" }),
+        c.profileId && idCell(c.profileId, "profile ID")));
+      if (c.error) box.append(h("div", { class: "alert err", text: c.error }));
+      c.links.forEach(function (l) {
+        var url = httpsUrl(l.url);
+        var row = h("div", { class: "link-row" }, h("strong", { text: pname(l.platform) }));
+        if (l.error || !url) { row.append(h("span", { class: "hint warn", text: l.error || "Zernio không trả link" }), h("span")); }
+        else {
+          var open = h("a", { class: "btn sm", href: url, target: "_blank", rel: "noopener noreferrer", text: "Mở" });
+          row.append(h("span", { class: "link-url", text: url, title: url }), h("span", { class: "row" }, copyBtn("Copy", function () { return url; }), open));
+        }
+        box.append(row);
+      });
+      out.append(box);
+    });
+  }
+
+  // ---------- Tab 2: quét ID ----------
+  function scanIds() {
+    if (!keys.length) { toast("Hãy thêm key trước"); return; }
+    ids = { rows: [], errors: [], busy: true, done: false }; renderIds();
+    var rows = [], errors = [];
+    Promise.all(keys.map(function (k) {
+      return Promise.all([zf(k, "/profiles"), zf(k, "/accounts")]).then(function (res) {
+        k.profiles = res[0].profiles || []; k.err = "";
+        var byId = {}; k.profiles.forEach(function (p) { byId[p._id] = p; });
+        var used = {};
+        (res[1].accounts || []).forEach(function (a) {
+          var pid = a.profileId && typeof a.profileId === "object" ? a.profileId._id : a.profileId;
+          used[pid] = 1;
+          var pf = byId[pid];
+          rows.push({ key: k.label, channel: (pf && pf.name) || (a.profileId && a.profileId.name) || "(không rõ)", profileId: pid || "", platform: a.platform, accountId: a._id, username: a.username || "", display: a.displayName || "", active: a.isActive !== false, empty: false });
+        });
+        k.profiles.forEach(function (p) { if (!used[p._id]) rows.push({ key: k.label, channel: p.name, profileId: p._id, platform: "", accountId: "", username: "", display: "", active: true, empty: true }); });
+      }).catch(function (e) { errors.push(k.label + ": " + e.message); k.err = e.message; })
+        .then(function () { refreshKey(k); });
+    })).then(function () {
+      rows.sort(function (a, b) { return (a.channel + a.platform).localeCompare(b.channel + b.platform, "vi"); });
+      ids = { rows: rows, errors: errors, busy: false, done: true }; renderIds();
+    });
+  }
+  function idRows() {
+    var q = norm($("#id-filter").value), showEmpty = $("#id-empty").checked;
+    return ids.rows.filter(function (r) {
+      if (r.empty && !showEmpty) return false;
+      return !q || norm([r.key, r.channel, pname(r.platform), r.username, r.display, r.profileId, r.accountId].join(" ")).indexOf(q) >= 0;
+    });
+  }
+  function renderIds() {
+    var out = $("#ids-out"); out.replaceChildren();
+    $("#scan-ids").disabled = ids.busy; $("#scan-ids").textContent = ids.busy ? "Đang quét…" : "Quét tất cả key";
+    ids.errors.forEach(function (e) { out.append(h("div", { class: "alert err", text: e })); });
+    if (!ids.done) { out.append(h("div", { class: "empty", text: ids.busy ? "Đang lấy profile và tài khoản từ Zernio…" : keys.length ? "Bấm Quét tất cả key để lấy profile ID và account ID." : "Chưa có key. Thêm key ở Kho API rồi bấm Quét." })); return; }
+    var rows = idRows(), acc = rows.filter(function (r) { return !r.empty; }).length;
+    if (!rows.length) { if (!ids.errors.length || ids.rows.length) out.append(h("div", { class: "empty", text: "Không có dòng nào khớp. Thử bỏ bộ lọc hoặc bật Hiện profile chưa nối tài khoản." })); return; }
+    out.append(h("div", { class: "muted", text: acc + " tài khoản trong " + new Set(rows.map(function (r) { return r.channel; })).size + " kênh. Bấm vào một ID để copy." }));
+    var tb = h("tbody", {});
+    rows.forEach(function (r) {
+      tb.append(h("tr", { class: r.empty ? "dim" : "" },
+        h("td", { text: r.channel }), h("td", { text: pname(r.platform) || "—" }), h("td", {}, idCell(r.profileId, "profile ID")), h("td", {}, idCell(r.accountId, "account ID")),
+        h("td", { text: r.username ? r.username + (r.display && r.display !== r.username ? " (" + r.display + ")" : "") : "—" }),
+        h("td", {}, r.empty ? h("span", { class: "badge", text: "Chưa nối" }) : h("span", { class: "badge " + (r.active ? "ok" : "err"), text: r.active ? "Hoạt động" : "Mất kết nối" })),
+        h("td", { class: "muted", text: r.key })));
+    });
+    var head = ["Kênh", "Nền tảng", "Profile ID", "Account ID", "Tài khoản", "Trạng thái", "Key"].map(function (t) { return h("th", { text: t }); });
+    out.append(h("div", { class: "tablebox" }, h("table", {}, h("thead", {}, h("tr", {}, head)), tb)));
+  }
+  function idsTsv() {
+    var lines = [["Kênh", "Nền tảng", "Profile ID", "Account ID", "Tài khoản", "Trạng thái", "Key"].join("\t")];
+    idRows().forEach(function (r) { lines.push([r.channel, pname(r.platform), r.profileId, r.accountId, r.username, r.empty ? "Chưa nối" : r.active ? "Hoạt động" : "Mất kết nối", r.key].join("\t")); });
+    return lines.join("\n");
+  }
+
+  // ---------- Tab 3: thông số video ----------
+  var MAXPAGES = 5;
+  function scanStats() {
+    if (!keys.length) { toast("Hãy thêm key trước"); return; }
+    var from = $("#st-from").value, to = $("#st-to").value;
+    if (!from || !to || from > to) { toast("Chọn khoảng ngày hợp lệ"); return; }
+    stats.busy = true; stats.done = false; stats.rows = []; stats.errors = []; stats.notes = []; renderStats();
+    var rows = [], errors = [], notes = [];
+    Promise.all(keys.map(function (k) {
+      return zf(k, "/profiles").then(function (pr) {
+        k.profiles = pr.profiles || [];
+        var byId = {}; k.profiles.forEach(function (p) { byId[p._id] = p; });
+        var accs = {};
+        var page = function (n) {
+          return zf(k, "/analytics?fromDate=" + from + "&toDate=" + to + "&sortBy=date&order=desc&limit=100&page=" + n).then(function (r) {
+            (r.accounts || []).forEach(function (a) { accs[a._id] = a; });
+            if (r.hasAnalyticsAccess === false) notes.push(k.label + ": key chưa có quyền xem analytics trên Zernio.");
+            (r.posts || []).forEach(function (p) {
+              var a = p.analytics || {};
+              rows.push({ key: k.label, channel: (byId[p.profileId] && byId[p.profileId].name) || "(không rõ)", platform: p.platform, date: p.publishedAt || p.scheduledFor || "", content: (p.content || "").replace(/\s+/g, " ").slice(0, 140), url: p.platformPostUrl || "", id: p._id || "", status: p.status || "",
+                views: Number(a.views) || 0, likes: Number(a.likes) || 0, comments: Number(a.comments) || 0, shares: Number(a.shares) || 0, saves: Number(a.saves) || 0 });
+            });
+            var pages = (r.pagination && r.pagination.pages) || 1;
+            if (n < pages && n < MAXPAGES) return page(n + 1);
+            if (n < pages) notes.push(k.label + ": chỉ lấy " + MAXPAGES * 100 + " bài mới nhất, còn nhiều bài cũ hơn. Thu hẹp khoảng ngày để thấy hết.");
+          });
+        };
+        return page(1);
+      }).catch(function (e) { errors.push(k.label + ": " + e.message); }).then(function () { refreshKey(k); });
+    })).then(function () {
+      stats.rows = rows; stats.errors = errors; stats.notes = notes; stats.busy = false; stats.done = true; renderStats();
+    });
+  }
+  function statRows() {
+    var rows = stats.rows.filter(function (r) { return (!stats.platform || r.platform === stats.platform) && (!stats.channel || r.channel === stats.channel); });
+    var k = stats.sort, d = stats.dir;
+    return rows.slice().sort(function (a, b) { var x = a[k], y = b[k]; return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), "vi")) * d; });
+  }
+  function renderStats() {
+    var out = $("#stats-out"); out.replaceChildren();
+    $("#scan-stats").disabled = stats.busy; $("#scan-stats").textContent = stats.busy ? "Đang quét…" : "Quét thông số";
+    stats.errors.forEach(function (e) { out.append(h("div", { class: "alert err", text: e })); });
+    stats.notes.forEach(function (e) { out.append(h("div", { class: "alert warn", text: e })); });
+    if (!stats.done) { out.append(h("div", { class: "empty", text: stats.busy ? "Đang lấy bài đăng và số liệu từ Zernio…" : keys.length ? "Chọn khoảng ngày rồi bấm Quét thông số." : "Chưa có key. Thêm key ở Kho API rồi bấm Quét." })); return; }
+    if (!stats.rows.length) { if (!stats.errors.length) out.append(h("div", { class: "empty", text: "Không có bài nào trong khoảng ngày này." })); return; }
+    var rows = statRows();
+    var total = function (f) { return rows.reduce(function (s, r) { return s + r[f]; }, 0); };
+    var plats = Array.from(new Set(stats.rows.map(function (r) { return r.platform; }))).sort();
+    var chans = Array.from(new Set(stats.rows.map(function (r) { return r.channel; }))).sort();
+    var sel = function (id, label, vals, cur, fmt, set) {
+      var s = h("select", { id: id, "aria-label": label }, h("option", { value: "", text: label + ": tất cả" }), vals.map(function (v) { return h("option", { value: v, text: fmt(v), selected: v === cur }); }));
+      s.addEventListener("change", function () { set(s.value); renderStats(); }); return s;
+    };
+    out.append(h("div", { class: "filters" },
+      sel("f-plat", "Nền tảng", plats, stats.platform, pname, function (v) { stats.platform = v; }),
+      sel("f-chan", "Kênh", chans, stats.channel, function (v) { return v; }, function (v) { stats.channel = v; })));
+    var stat = function (v, l) { return h("div", { class: "stat" }, h("b", { text: nf.format(v) }), h("span", { text: l })); };
+    out.append(h("div", { class: "stats" }, stat(rows.length, "bài"), stat(total("views"), "lượt xem"), stat(total("likes"), "lượt thích"), stat(total("comments"), "bình luận"), stat(total("shares"), "chia sẻ"), stat(total("saves"), "lượt lưu")));
+    if (!rows.length) { out.append(h("div", { class: "empty", text: "Không có bài nào trong khoảng ngày và bộ lọc này." })); return; }
+    var cols = [["date", "Ngày đăng"], ["channel", "Kênh"], ["platform", "Nền tảng"], ["content", "Nội dung"], ["views", "Xem", 1], ["likes", "Thích", 1], ["comments", "Bình luận", 1], ["shares", "Chia sẻ", 1], ["saves", "Lưu", 1]];
+    var head = cols.map(function (c) {
+      var b = h("button", { type: "button", text: c[1] + (stats.sort === c[0] ? (stats.dir < 0 ? " ↓" : " ↑") : ""), onclick: function () { if (stats.sort === c[0]) stats.dir = -stats.dir; else { stats.sort = c[0]; stats.dir = c[2] || c[0] === "date" ? -1 : 1; } renderStats(); } });
+      return h("th", { class: c[2] ? "num" : "", "aria-sort": stats.sort === c[0] ? (stats.dir < 0 ? "descending" : "ascending") : "none" }, b);
+    });
+    head.push(h("th", { text: "Link bài" }));
+    var tb = h("tbody", {});
+    rows.forEach(function (r) {
+      var url = httpsUrl(r.url);
+      tb.append(h("tr", {}, h("td", { text: fmtDate(r.date) || "—" }), h("td", { text: r.channel }), h("td", { text: pname(r.platform) }), h("td", { class: "wrapcell", text: r.content || "(không có chữ)" }),
+        h("td", { class: "num", text: nf.format(r.views) }), h("td", { class: "num", text: nf.format(r.likes) }), h("td", { class: "num", text: nf.format(r.comments) }), h("td", { class: "num", text: nf.format(r.shares) }), h("td", { class: "num", text: nf.format(r.saves) }),
+        h("td", {}, url ? h("span", { class: "row", style: "flex-wrap:nowrap" }, copyBtn("Copy", function () { return url; }), h("a", { class: "btn sm", href: url, target: "_blank", rel: "noopener noreferrer", text: "Mở" })) : h("span", { class: "muted", text: "—" }))));
+    });
+    out.append(h("div", { class: "tablebox" }, h("table", {}, h("thead", {}, h("tr", {}, head)), tb)));
+  }
+  function statsTsv() {
+    var lines = [["Ngày đăng", "Kênh", "Nền tảng", "Nội dung", "Xem", "Thích", "Bình luận", "Chia sẻ", "Lưu", "Link"].join("\t")];
+    statRows().forEach(function (r) { lines.push([fmtDate(r.date), r.channel, pname(r.platform), r.content.replace(/\t/g, " "), r.views, r.likes, r.comments, r.shares, r.saves, r.url].join("\t")); });
+    return lines.join("\n");
+  }
+
+  // ---------- Tab và khởi động ----------
+  var TABS = ["tao-link", "quet-id", "thong-so"];
+  function showTab(name) {
+    if (TABS.indexOf(name) < 0) name = "tao-link";
+    TABS.forEach(function (t) { var on = t === name; $("#t-" + t).setAttribute("aria-selected", on); $("#t-" + t).tabIndex = on ? 0 : -1; $("#p-" + t).hidden = !on; });
+  }
+  document.querySelectorAll(".tab").forEach(function (b) { b.addEventListener("click", function () { location.hash = b.dataset.tab; showTab(b.dataset.tab); }); });
+  window.addEventListener("hashchange", function () { showTab(location.hash.slice(1)); });
+
+  $("#add-keys").addEventListener("click", addKeys);
+  $("#make-all").addEventListener("click", function () { if (!keys.length) { toast("Hãy thêm key trước"); return; } Promise.all(keys.map(makeLinks)); });
+  $("#copy-all-links").addEventListener("click", function () { var all = []; keys.forEach(function (k) { all = all.concat(linkLines(k)); }); if (all.length) copy(all.join("\n"), all.length + " link"); else toast("Chưa có link nào, hãy tạo link trước"); });
+  $("#scan-ids").addEventListener("click", scanIds);
+  $("#copy-ids").addEventListener("click", function () { if (ids.done) copy(idsTsv(), "bảng ID"); else toast("Hãy quét trước"); });
+  $("#id-filter").addEventListener("input", renderIds);
+  $("#id-empty").addEventListener("change", renderIds);
+  $("#scan-stats").addEventListener("click", scanStats);
+  $("#copy-stats").addEventListener("click", function () { if (stats.done && stats.rows.length) copy(statsTsv(), "bảng thông số"); else toast("Hãy quét trước"); });
+
+  var today = new Date(), ago = new Date(Date.now() - 30 * 864e5);
+  var iso = function (d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  $("#st-to").value = iso(today); $("#st-from").value = iso(ago);
+  showTab(location.hash.slice(1));
+  renderKeyList(); renderIds(); renderStats();
+})();
+</script>
